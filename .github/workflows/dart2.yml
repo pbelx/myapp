@@ -1,72 +1,52 @@
-name: Build and Release Flutter App for Windows
+name: Build Windows
 
 on:
   push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+    tags:
+      - 'v*.*.*' # Adjust as needed, this triggers on tags matching the pattern v*.*.*
 
 jobs:
   build:
     runs-on: windows-latest
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
+      - uses: actions/checkout@v2
 
-    - name: Set up Flutter
-      uses: subosito/flutter-action@v2
-      with:
-        flutter-version: '3.22.2'  # Specify the exact version of Flutter
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 'stable'
 
-    - name: Flutter doctor
-      run: flutter doctor
+      - name: Install dependencies
+        run: flutter pub get
 
-    - name: Get Flutter dependencies
-      run: flutter pub get
+      - name: Build Windows
+        run: flutter build windows
 
-    - name: Build Flutter app for Windows
-      run: flutter build windows
+      - name: Archive Windows build
+        if: success()
+        uses: actions/upload-artifact@v2
+        with:
+          name: windows-build
+          path: build/windows/runner/Release/
 
-    - name: Upload build artifacts
-      uses: actions/upload-artifact@v2
-      with:
-        name: windows-build
-        path: build/windows/x64/runner/Release
+      - name: Create GitHub Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.BX_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
 
-  release:
-    needs: build
-    runs-on: windows-latest  # Use the same environment as the build job
-
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
-
-    - name: Download Build Artifacts
-      uses: actions/download-artifact@v2
-      with:
-        name: windows-build
-        path: build/windows/x64/runner/Release
-
-    - name: Create Release
-      id: create_release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: v1.0.0  # Replace with your desired tag version
-        release_name: Release v1.0.0  # Replace with your desired release name
-        draft: false
-        prerelease: false
-
-    - name: Upload exe as release asset
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: build/windows/x64/runner/Release/radiobx.exe  # Update this path as needed
-        asset_name: radiobx.exe  # Update this as needed
-        asset_content_type: application/octet-stream
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.BX_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: build/windows/runner/Release
+          asset_name: my_app_windows.zip
+          asset_content_type: application/zip
