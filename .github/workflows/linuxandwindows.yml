@@ -32,7 +32,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.BX_TOKEN }}
         with:
           files: build/linux/x64/release/bundle/MacRecoveryX-${{github.ref_name}}-linux.zip
 
@@ -63,6 +63,6 @@ jobs:
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.BX_TOKEN }}
         with:
           files: build/windows/runner/Release/MacRecoveryX-${{github.ref_name}}-windows.zip
