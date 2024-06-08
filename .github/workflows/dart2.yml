@@ -1,47 +1,72 @@
-name: Create Release
+name: Build and Release Flutter App for Windows
 
 on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
-  release:
-    runs-on: ubuntu-latest
+  build:
+    runs-on: windows-latest
+
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+    - name: Checkout repository
+      uses: actions/checkout@v3
 
-      - name: Set up Git
-        run: git config --global user.email "you@example.com" && git config --global user.name "Your Name"
+    - name: Set up Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.22.2'  # Specify the exact version of Flutter
 
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: v1.0.0  # Specify your version number
-          release_name: Release v1.0.0  # Specify your release name
-          draft: false
-          prerelease: false
+    - name: Flutter doctor
+      run: flutter doctor
 
-      - name: Upload exe file
-        uses: actions/upload-artifact@v2
-        with:
-          name: my-exe-file
-          path: build/windows/x64/runner/Release
+    - name: Get Flutter dependencies
+      run: flutter pub get
 
-      - name: Get release ID
-        id: get_release_id
-        run: echo "${{ steps.create_release.outputs.id }}"
+    - name: Build Flutter app for Windows
+      run: flutter build windows
 
-      - name: Upload exe as release asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: build/windows/x64/runner/Release/my-exe-file.exe
-          asset_name: my-exe-file.exe
-          asset_content_type: application/octet-stream
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v2
+      with:
+        name: windows-build
+        path: build/windows/x64/runner/Release
+
+  release:
+    needs: build
+    runs-on: windows-latest  # Use the same environment as the build job
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Download Build Artifacts
+      uses: actions/download-artifact@v2
+      with:
+        name: windows-build
+        path: build/windows/x64/runner/Release
+
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: v1.0.0  # Replace with your desired tag version
+        release_name: Release v1.0.0  # Replace with your desired release name
+        draft: false
+        prerelease: false
+
+    - name: Upload exe as release asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: build/windows/x64/runner/Release/radiobx.exe  # Update this path as needed
+        asset_name: radiobx.exe  # Update this as needed
+        asset_content_type: application/octet-stream
